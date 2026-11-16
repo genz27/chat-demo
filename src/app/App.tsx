@@ -9,8 +9,6 @@ import {
   selectSession,
   useChatStore,
 } from '../services/chat/store.js'
-import { SearchPanel } from '../components/search/SearchPanel.js'
-import { closeSearchPanel } from '../components/search/searchPanelState.js'
 import { SessionView } from '../components/session/SessionView.js'
 import { MobileHeader } from '../components/session/MobileHeader.js'
 import { Welcome } from '../components/session/Welcome.js'
@@ -60,8 +58,6 @@ export const App = () => {
   useEffect(() => onUploadNotice(showToast), [])
   useEffect(bindChatPersistence, [])
 
-  // 搜索结果面板只属于当前会话
-  useEffect(closeSearchPanel, [activeId])
   // 切换会话时停止朗读
   useEffect(stopReadAloud, [activeId])
   // 移动端选中会话、切换布局后收起抽屉
@@ -130,7 +126,6 @@ export const App = () => {
             )}
           </div>
         </main>
-        <SearchPanel />
       </div>
       <SettingsDialog />
       <Toast />

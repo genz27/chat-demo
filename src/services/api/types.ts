@@ -4,7 +4,8 @@
  * 声明 deepseek_web_search / deepseek_read_url 或设置 safety_check.level 为 high 时进入扩展模式。
  */
 
-export type ChatModel = 'deepseek-flash' | 'deepseek-v4-pro'
+/** haqimi.uk 当前公开的两个模型，界面只暴露这两个选项。 */
+export type ChatModel = 'deepseek-v4.1-flash' | 'grok-4.7'
 
 // ---------- 响应：内容块 ----------
 

@@ -4,19 +4,15 @@ import { memo, useEffect, useState, type ReactNode } from 'react'
 import {
   IconBrowseOutline16,
   IconBrowseWarningOutline16,
-  IconChevronDownOutline14,
-  IconChevronRightOutline14,
   IconCheckedOutline14,
   IconCloseFill14,
   IconLinkOutline16,
   IconRightUpOutline14,
   IconSearchOutline16,
   IconSearchWarningOutline16,
-  IconThinkOutline16,
 } from '../base/icons.js'
 import type { AssistantMessage } from '../../services/chat/types.js'
 import {
-  getAreaTitle,
   isDeepSearchKind,
   isImageSearchKind,
   type FindStep,
@@ -33,7 +29,6 @@ import { Markdown } from '../markdown/Markdown.js'
 import { SiteThumbnails } from '../search/SiteLogo.js'
 import { toggleSearchPanel, useSearchPanel } from '../search/searchPanelState.js'
 import styles from './ReplyArea.module.css'
-import './thinking.markdown.css'
 
 /** 进行中时每秒刷新，用于思考用时与搜索词轮播 */
 const useTicker = (active: boolean, interval: number) => {
@@ -57,7 +52,6 @@ export const ReplyArea = memo(function ReplyArea({
   message,
   view,
   streaming,
-  hasResponse,
 }: {
   message: AssistantMessage
   view: ReplyView
@@ -65,41 +59,24 @@ export const ReplyArea = memo(function ReplyArea({
   hasResponse: boolean
 }) {
   useTranslate()
-  const [open, setOpen] = useState(true)
-  const titleActive = streaming && !hasResponse
-  useTicker(titleActive, 1000)
-  if (view.steps.length === 0 && !(message.thinking && streaming)) {
+  const steps = view.steps.filter((step) => step.type !== 'thinking')
+  if (steps.length === 0) {
     return null
   }
-  // 未记录请求开关时，按是否有思考内容显示标题。
-  const thinking = message.thinking ?? view.steps.some((step) => step.type === 'thinking')
-  const title = thinking ? getAreaTitle(view, streaming, Date.now(), hasResponse) : null
-  const stopped = !streaming && !hasResponse
   return (
     <div className={styles.area}>
-      {title ? (
-        <div className={styles.title} onClick={() => setOpen((value) => !value)}>
-          <span className={clsx(styles.titleIcon, stopped && styles.stoppedIcon)}>
-            <IconThinkOutline16 />
-          </span>
-          <span className={clsx(styles.titleText, titleActive && styles.shimmer)}>{title}</span>
-          {open ? <IconChevronDownOutline14 /> : <IconChevronRightOutline14 />}
-        </div>
-      ) : null}
-      {open || !title ? (
-        <div className={styles.steps}>
-          {view.steps.map((step, index) => (
+      <div className={styles.steps}>
+        {steps.map((step, index) => (
             <StepItem
               key={stepKey(step, index)}
               step={step}
               message={message}
               sources={view.sources}
               streaming={streaming}
-              isLast={index === view.steps.length - 1}
+              isLast={index === steps.length - 1}
             />
-          ))}
-        </div>
-      ) : null}
+        ))}
+      </div>
     </div>
   )
 })

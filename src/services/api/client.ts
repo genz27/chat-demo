@@ -1,5 +1,4 @@
 import { translate, type TranslationMessage } from '../../i18n/index.js'
-import { readMessageEvent } from './parseEvent.js'
 import { readServerSentEvents } from './sse.js'
 import type {
   ApiErrorBody,
@@ -9,24 +8,11 @@ import type {
   MessageStreamEvent,
 } from './types.js'
 
-/** 构建期 API 地址，默认 https://api.deepseek.com；本地开发支持开发服务器代理 */
+/** haqimi.uk 的 OpenAI-compatible API 地址。 */
 export const API_ORIGIN = __API_ORIGIN__
-/** Anthropic 兼容接口的前缀 */
-const ANTHROPIC_BASE_URL = `${API_ORIGIN}/anthropic/v1`
-/** 引用 Files API 上传的图片、调用 Anthropic 兼容 Files API 时必须携带 */
-const FILES_BETA = 'files-api-2025-04-14'
+const OPENAI_BASE_URL = `${API_ORIGIN}/v1`
 
-export type ApiErrorKind =
-  /** 非 2xx 响应 */
-  | 'http'
-  /** 流中返回的错误帧（如等待生成超时），随后连接关闭 */
-  | 'stream'
-  /** 请求没有到达服务端（断网、跨域被拦截等） */
-  | 'network'
-  /** 流在 message_stop 之前结束 */
-  | 'interrupted'
-  /** 响应不符合协议（如非 SSE 响应） */
-  | 'protocol'
+export type ApiErrorKind = 'http' | 'stream' | 'network' | 'interrupted' | 'protocol'
 
 export class ApiError extends Error {
   readonly localMessage?: TranslationMessage
@@ -61,7 +47,7 @@ const readErrorResponse = async (
       message = body.error.message
     }
   } catch {
-    // 非 JSON 响应体直接展示原文
+    // 非 JSON 响应体直接展示原文。
   }
   return new ApiError(kind, message, response.status)
 }
@@ -82,26 +68,19 @@ export const request = async (url: string, init: RequestInit): Promise<Response>
   return response
 }
 
-const anthropicHeaders = (apiKey: string, beta: boolean): Record<string, string> => ({
-  // DeepSeek 兼容接口的鉴权方式，也可使用 Authorization: Bearer。
-  'x-api-key': apiKey,
-  // Files API 和通过 file_id 引用图片时必传；纯文本聊天无需携带。
-  ...(beta ? { 'anthropic-beta': FILES_BETA } : {}),
-})
+const authHeaders = (apiKey: string): Record<string, string> =>
+  apiKey === '__CHAT_API_KEY__' ? {} : { Authorization: `Bearer ${apiKey}` }
 
-/** 用 GET /models 校验 API Key（不产生费用） */
+/** 用 GET /v1/models 校验 API Key（不产生费用）。 */
 export const verifyApiKey = async (apiKey: string, signal?: AbortSignal): Promise<void> => {
-  await request(`${API_ORIGIN}/models`, {
+  await request(`${OPENAI_BASE_URL}/models`, {
     method: 'GET',
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: authHeaders(apiKey),
     signal,
   })
 }
 
-/**
- * POST /anthropic/v1/files 上传附件（不设过期时间，会话里的历史附件一直可用）。
- * purpose 为 null 时不传该字段（图片）；purpose 必须排在 file 之前。
- */
+/** OpenAI Files API 上传附件。 */
 export const uploadFile = async (
   apiKey: string,
   file: File,
@@ -109,81 +88,122 @@ export const uploadFile = async (
   signal?: AbortSignal
 ): Promise<FileObject> => {
   const form = new FormData()
-  if (purpose) {
-    form.append('purpose', purpose)
-  }
+  form.append('purpose', purpose === 'rich_layout_recognition' ? 'assistants' : 'user_data')
   form.append('file', file)
-  const response = await request(`${ANTHROPIC_BASE_URL}/files`, {
+  const response = await request(`${OPENAI_BASE_URL}/files`, {
     method: 'POST',
-    headers: anthropicHeaders(apiKey, true),
+    headers: authHeaders(apiKey),
     body: form,
     signal,
   })
   return (await response.json()) as FileObject
 }
 
-/** DELETE /anthropic/v1/files/{file_id} */
+/** DELETE /v1/files/{file_id}. */
 export const deleteFile = async (apiKey: string, fileId: string): Promise<void> => {
-  await request(`${ANTHROPIC_BASE_URL}/files/${encodeURIComponent(fileId)}`, {
+  await request(`${OPENAI_BASE_URL}/files/${encodeURIComponent(fileId)}`, {
     method: 'DELETE',
-    headers: anthropicHeaders(apiKey, true),
+    headers: authHeaders(apiKey),
   })
 }
 
-const hasFile = (body: CreateMessageRequest) =>
-  body.messages.some(
-    (message) =>
-      typeof message.content !== 'string' &&
-      message.content.some((block) => block.type === 'image' || block.type === 'document')
-  )
+type OpenAiMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
-/**
- * POST /anthropic/v1/messages（stream: true），逐个产出流式事件，收到 message_stop 时结束。
- * ping、保活注释与无法解析的内容不产出；中止请求时抛出 signal 的 AbortError。
- */
+/** 将本地历史结构转换成 OpenAI Chat Completions 消息。 */
+const toOpenAiMessages = (body: CreateMessageRequest) => [
+  { role: 'system' as const, content: body.system },
+  ...body.messages.flatMap((message): OpenAiMessage[] => {
+    if (message.role === 'latest_reminder') {
+      return [{ role: 'system', content: message.content }]
+    }
+    if (typeof message.content === 'string') {
+      return [{ role: message.role, content: message.content }]
+    }
+    const text = message.content
+      .map((block) => ('text' in block ? block.text : `[${block.type}]`))
+      .join('\n')
+    return text ? [{ role: message.role, content: text }] : []
+  }),
+]
+
+type OpenAiChunk = {
+  id?: string
+  choices?: Array<{
+    delta?: { content?: string }
+    finish_reason?: string | null
+  }>
+}
+
+/** POST /v1/chat/completions，并翻译为现有消息状态机使用的事件。 */
 export async function* streamMessage(
   apiKey: string,
   body: CreateMessageRequest,
   signal: AbortSignal
 ): AsyncGenerator<MessageStreamEvent> {
-  const response = await request(`${ANTHROPIC_BASE_URL}/messages`, {
+  const response = await request(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
-    headers: {
-      ...anthropicHeaders(apiKey, hasFile(body)),
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-    },
-    body: JSON.stringify({ ...body, stream: true }),
+    headers: { ...authHeaders(apiKey), 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify({ model: body.model, messages: toOpenAiMessages(body), stream: true }),
     signal,
   })
-  const contentType = response.headers.get('Content-Type') ?? ''
-  if (!response.body || !contentType.includes('text/event-stream')) {
+  if (!response.body) {
     throw await readErrorResponse(response, 'protocol', '')
   }
+
+  let blockStarted = false
+  const blockIndex = 0
+  const messageId = crypto.randomUUID()
+  yield { type: 'message_start', message: { id: messageId, model: body.model } }
+
   for await (const { event: eventName, data } of readServerSentEvents(response.body, signal)) {
+    if (data === '[DONE]') {
+      if (blockStarted) {
+        yield { type: 'content_block_stop', index: blockIndex }
+      }
+      yield { type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null } }
+      yield { type: 'message_stop' }
+      return
+    }
     let payload: unknown
     try {
       payload = JSON.parse(data)
     } catch {
-      if (eventName !== 'error') {
-        continue
+      if (eventName === 'error') {
+        throw new ApiError('stream', data)
       }
+      continue
     }
     if (isErrorBody(payload)) {
       throw new ApiError('stream', payload.error.message)
     }
-    if (eventName === 'error') {
-      throw new ApiError('stream', data)
+    const chunk = payload as OpenAiChunk
+    const choice = chunk.choices?.[0]
+    const text = choice?.delta?.content
+    if (text) {
+      if (!blockStarted) {
+        blockStarted = true
+        yield {
+          type: 'content_block_start',
+          index: blockIndex,
+          content_block: { type: 'text', text: '' },
+        }
+      }
+      yield { type: 'content_block_delta', index: blockIndex, delta: { type: 'text_delta', text } }
     }
-    const event = readMessageEvent(payload)
-    if (!event) {
-      continue
-    }
-    yield event
-    if (event.type === 'message_stop') {
+    if (choice?.finish_reason) {
+      if (blockStarted) {
+        yield { type: 'content_block_stop', index: blockIndex }
+      }
+      yield {
+        type: 'message_delta',
+        delta: {
+          stop_reason: choice.finish_reason === 'length' ? 'max_tokens' : 'end_turn',
+          stop_sequence: null,
+        },
+      }
+      yield { type: 'message_stop' }
       return
     }
   }
-  // 服务端没有提供错误内容时保持为空，不推测断流原因。
   throw new ApiError('interrupted', '')
 }

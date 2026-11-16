@@ -2,46 +2,46 @@
 
 [English](README.md) | 简体中文
 
-基于 DeepSeek API 的静态聊天示例。无需应用后端，浏览器直接请求配置的 API 服务。
+基于 haqimi.uk OpenAI-compatible API 的聊天应用。Docker/Nginx 在服务端注入 API Key，浏览器不再提供 API Key 输入框。
 
-点击 [在线体验](https://deepseek-ai.github.io/chat-demo/) 即可使用，也可以前往 [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases) 下载压缩包，解压后双击 `index.html` 在本地使用，无需安装或构建。首次使用时，请在设置中填写 API Key。
+当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型；深度思考和智能搜索已关闭。
 
 ## 运行
 
 准备 Node.js 22.12+ 和 pnpm：
 
 ```sh
-git clone https://github.com/deepseek-ai/chat-demo.git
-cd chat-demo
 pnpm install
 pnpm dev
 ```
 
-打开 http://localhost:8090 。
+打开 http://localhost:8090 。生成静态产物：`pnpm build`。
 
-生成静态产物：
+## Docker 部署
+
+复制环境变量模板并填入 haqimi.uk 密钥（不要提交 `.env`）：
 
 ```sh
-pnpm build
+cp .env.example .env
+# 编辑 .env，设置 CHAT_API_KEY=...
+docker compose up --build -d
 ```
 
-产物位于 `dist/`，可部署到静态服务器，也可直接打开 `dist/index.html`。直接打开时，浏览器和 API 服务需允许 `file://` 页面的存储与跨域请求。
+打开 <http://localhost:8080>。密钥只存在容器环境和 Nginx 的请求头中，前端设置页不再显示数据管理/API Key 输入。
 
 ## 功能
 
 - 多会话、自动标题、重命名与删除；编辑提问、重新生成和切换消息分支。
-- 流式回答、深度思考、智能搜索、链接阅读与来源引用；支持停止和符合条件的继续生成。
+- 流式回答、停止与符合条件的继续生成；可在输入框选择 DeepSeek 或 Grok。
 - 附件上传、粘贴与拖拽，语音输入和回复朗读；移动端录音时输入框首行显示实时频谱。
 - Markdown、代码高亮、KaTeX 公式和 Mermaid 图表。
-- 简体中文与英文、浅色与深色主题、移动端布局、位置设置、历史导入导出。
+- 简体中文与英文、浅色与深色主题、移动端布局和位置设置。
 
-## 数据
+## 数据与配置
 
-API Key 和设置保存在浏览器 localStorage，会话及附件原件保存在 IndexedDB，本地数据按浏览器用户配置和站点源（origin）隔离。发送对话、上传附件和使用语音功能时，相应内容会提交给配置的 API 服务。
+部署密钥由 `CHAT_API_KEY` 环境变量提供，不写入仓库；会话及附件原件保存在 IndexedDB，本地数据按浏览器用户配置和站点源隔离。设置页仅保留主题、语言、朗读音色和位置偏好。
 
-设置中的历史导入导出使用 ZIP 格式。导入会在确认并校验成功后替换全部本地会话和附件；导出包含会话与本地可用的图片原件，不包含 API Key、设置或非图片附件原件。格式与保留范围见[历史导入导出](src/services/chat/history/README.md)。
-
-设置 → 数据管理 → 删除所有对话，会在确认后清空全部本地会话、附件原件和未发送的草稿，停止正在生成的回复并回到新对话。API Key 和其他设置保留，已上传到 API 服务的文件不受影响。
+[rspack.config.ts](rspack.config.ts) 默认连接 `https://haqimi.uk`；Docker 使用同源 `/v1` 代理。聊天通过 `/v1/chat/completions` 通信，默认模型为 `deepseek-v4.1-flash`，可切换 `grok-4.7`；语音使用 `/v1/tools/asr` 与 `/v1/tools/tts`。
 
 ## 开发
 
@@ -52,23 +52,6 @@ API Key 和设置保存在浏览器 localStorage，会话及附件原件保存�
 | `pnpm type`   | TypeScript 类型检查 |
 | `pnpm lint`   | oxlint 检查         |
 | `pnpm format` | oxfmt 格式化        |
-
-[rspack.config.ts](rspack.config.ts) 默认连接 `https://api.deepseek.com`。`createConfig({ apiOrigin, devServer })` 支持自定义 API 地址和开发服务器代理。
-
-聊天默认使用 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API 通信；语音使用 ASR / TTS 接口。请求使用搜索、链接阅读、标题和 `latest_reminder` 等扩展，接入服务需支持相应能力。附件实际支持的格式以服务端校验为准。
-
-```text
-src/
-  app/                 应用布局、主题与全局样式
-  components/          聊天、设置、Markdown 等界面组件
-  i18n/                中英文文案
-  services/
-    api/               API 请求、SSE 与协议类型
-    chat/              会话、消息分支、本地存储与历史导入导出
-    markdown/          Markdown 解析、代码高亮与图表
-    speech/            录音与朗读
-  utils/               通用工具
-```
 
 ## 许可证
 

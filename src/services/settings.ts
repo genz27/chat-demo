@@ -1,32 +1,31 @@
 import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
 import { normalizeLocation, type UserLocation } from './location.js'
+import type { ChatModel } from './api/types.js'
 
 export type Locale = 'zh-CN' | 'en-US'
 
 /** 主题偏好；默认跟随系统 */
 export type ThemePreference = 'light' | 'dark' | 'system'
 
-/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态 */
+/** 本机设置，存 localStorage：部署 API Key、模型、语言、主题、位置、朗读音色和侧边栏状态。 */
 type Settings = {
   apiKey: string | null
+  model: ChatModel
   locale: Locale
   themePreference: ThemePreference
   location: UserLocation | null
   ttsVoice: TtsVoice
-  thinking: boolean
-  search: boolean
   siderCollapsed: boolean
 }
 
 const KEYS = {
   apiKey: 'chat-demo:api-key',
+  model: 'chat-demo:model',
   locale: 'chat-demo:locale',
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
   ttsVoice: 'chat-demo:tts-voice',
-  thinking: 'chat-demo:thinking',
-  search: 'chat-demo:search',
   siderCollapsed: 'chat-demo:sider-collapsed',
 } as const
 
@@ -87,16 +86,33 @@ const initialThemePreference = (): ThemePreference => {
 /** 未保存过时使用服务端默认音色 stella（海星） */
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
+const initialModel = (): ChatModel => {
+  const saved = read(KEYS.model)
+  return saved === 'grok-4.7' ? 'grok-4.7' : 'deepseek-v4.1-flash'
+}
+
+const configuredApiKey = (): string | null => {
+  // __CHAT_API_KEY__ is deliberately retained as a runtime placeholder in Docker images.
+  if (__APP_API_KEY__ && __APP_API_KEY__ !== '__CHAT_API_KEY__') {
+    return __APP_API_KEY__
+  }
+  return read(KEYS.apiKey) ?? '__CHAT_API_KEY__'
+}
+
 export const useSettings = create<Settings>(() => ({
-  apiKey: read(KEYS.apiKey),
+  apiKey: configuredApiKey(),
+  model: initialModel(),
   locale: initialLocale(),
   location: initialLocation(),
   themePreference: initialThemePreference(),
   ttsVoice: initialTtsVoice(),
-  thinking: read(KEYS.thinking) === 'true',
-  search: read(KEYS.search) === 'true',
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
 }))
+
+export const setModel = (model: ChatModel) => {
+  write(KEYS.model, model)
+  useSettings.setState({ model })
+}
 
 export const setLocale = (locale: Locale) => {
   write(KEYS.locale, locale)
@@ -122,16 +138,6 @@ export const setTtsVoice = (ttsVoice: TtsVoice) => {
 export const setApiKey = (apiKey: string | null) => {
   write(KEYS.apiKey, apiKey)
   useSettings.setState({ apiKey })
-}
-
-export const setThinking = (thinking: boolean) => {
-  write(KEYS.thinking, String(thinking))
-  useSettings.setState({ thinking })
-}
-
-export const setSearch = (search: boolean) => {
-  write(KEYS.search, String(search))
-  useSettings.setState({ search })
 }
 
 export const setSiderCollapsed = (siderCollapsed: boolean) => {

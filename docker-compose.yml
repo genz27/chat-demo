@@ -1,0 +1,12 @@
+services:
+  chat-demo:
+    build:
+      context: .
+      args:
+        CHAT_API_ORIGIN: ""
+    environment:
+      # Set this in .env or the shell; it is never committed to git.
+      CHAT_API_KEY: ${CHAT_API_KEY:?Set CHAT_API_KEY before starting the container}
+    ports:
+      - "8080:80"
+    restart: unless-stopped
