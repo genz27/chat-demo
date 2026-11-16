@@ -1,8 +1,8 @@
-# chat-demo
+# 哈吉咪咪
 
 [English](README.md) | 简体中文
 
-基于 haqimi.uk OpenAI-compatible API 的聊天应用。Docker/Nginx 在服务端注入 API Key，浏览器不再提供 API Key 输入框。
+哈吉咪咪是基于 haqimi.uk OpenAI-compatible API 的聊天应用。Docker/Nginx 在服务端注入 API Key，浏览器不再提供 API Key 输入框。
 
 当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型；深度思考和智能搜索已关闭。
 

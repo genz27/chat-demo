@@ -18,6 +18,15 @@ body {
   font-size: var(--ds-font-size-m);
   color: var(--dsw-alias-label-primary);
   background-color: var(--dsw-alias-bg-base);
+  --dsw-alias-brand-primary: #d873a7;
+  --dsw-alias-brand-text: #bd5f98;
+  --dsw-alias-button-primary-fill: #d873a7;
+  --dsw-alias-button-primary-hover: #c9649a;
+  --dsw-alias-button-ghost-active-fill: #fff0f7;
+  --dsw-alias-button-ghost-active-border: #f5bfd9;
+  --dsw-specific-sidebar-fill: rgba(255, 247, 252, 0.88);
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.86);
+  --dsw-specific-selector: rgba(255, 241, 248, 0.9);
   -webkit-text-size-adjust: none;
   -webkit-tap-highlight-color: transparent;
   font-feature-settings: 'kern';
@@ -26,6 +35,23 @@ body {
 
   --scroll-color: rgba(0, 0, 0, 0.08);
   --scroll-color-hover: rgba(0, 0, 0, 0.15);
+}
+
+body:not([data-ds-dark-theme]) {
+  background: linear-gradient(135deg, #fffafd 0%, #f8f5ff 52%, #fff8f1 100%);
+}
+
+body[data-ds-dark-theme] {
+  --dsw-alias-brand-primary: #ef9fc4;
+  --dsw-alias-brand-text: #f2a7cb;
+  --dsw-alias-button-primary-fill: #d77dab;
+  --dsw-alias-button-primary-hover: #e395ba;
+  --dsw-alias-button-ghost-active-fill: rgba(215, 125, 171, 0.18);
+  --dsw-alias-button-ghost-active-border: rgba(239, 159, 196, 0.5);
+  --dsw-specific-sidebar-fill: rgba(42, 31, 49, 0.94);
+  --dsw-specific-input-major: rgba(45, 35, 52, 0.94);
+  --dsw-specific-selector: rgba(80, 55, 76, 0.88);
+  background: linear-gradient(135deg, #211d2d 0%, #2a2032 52%, #252135 100%);
 }
 
 body.dark {
