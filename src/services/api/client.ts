@@ -1,5 +1,6 @@
 import { translate, type TranslationMessage } from '../../i18n/index.js'
 import { readServerSentEvents } from './sse.js'
+import { createId } from '../../utils/id.js'
 import type {
   ApiErrorBody,
   CreateMessageRequest,
@@ -152,7 +153,7 @@ export async function* streamMessage(
 
   let blockStarted = false
   const blockIndex = 0
-  const messageId = crypto.randomUUID()
+  const messageId = createId()
   yield { type: 'message_start', message: { id: messageId, model: body.model } }
 
   for await (const { event: eventName, data } of readServerSentEvents(response.body, signal)) {
