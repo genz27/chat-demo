@@ -244,15 +244,15 @@ export const bindChatPersistence = () => {
   }
 }
 
-/** 保存当前模型及思考档位；Grok 的默认搜索工具由 API 客户端声明。 */
+/** 保存当前模型；所有模型固定使用最高思考档位，Grok 的默认搜索工具由 API 客户端声明。 */
 const createReply = (): AssistantMessage => {
-  const { model, reasoningEffort } = useSettings.getState()
+  const { model } = useSettings.getState()
   return {
     id: createId(),
     role: 'assistant',
     createdAt: Date.now(),
     model,
-    reasoningEffort,
+    reasoningEffort: 'xhigh',
     thinking: false,
     search: false,
     prefix: true,
@@ -697,12 +697,12 @@ export const continueReply = (sessionId: string, messageId: string) => {
   ) {
     return
   }
-  const { model, reasoningEffort } = useSettings.getState()
+  const { model } = useSettings.getState()
   const reply: AssistantMessage = {
     ...previous,
     // 未记录请求配置的回复，续写时使用默认模型和当前开关。
     model: previous.model ?? model,
-    reasoningEffort,
+    reasoningEffort: 'xhigh',
     thinking: false,
     search: false,
     status: 'pending',
@@ -998,14 +998,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
             thinking: { type: 'disabled' },
             safety_check: SAFETY_CHECK,
             tools: serverTools(),
-            ...(initial.model === 'grok-4.7'
-              ? {
-                  reasoning: {
-                    effort: initial.reasoningEffort ?? 'auto',
-                    summary: 'auto' as const,
-                  },
-                }
-              : {}),
+            reasoning: { effort: 'xhigh', summary: 'auto' as const },
             ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
           },
           controller.signal

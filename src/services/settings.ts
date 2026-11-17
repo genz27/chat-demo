@@ -94,10 +94,8 @@ const initialModel = (): ChatModel => {
 }
 
 const initialReasoningEffort = (): ReasoningEffort => {
-  const saved = read(KEYS.reasoningEffort)
-  return saved === 'low' || saved === 'medium' || saved === 'high' || saved === 'xhigh'
-    ? saved
-    : 'auto'
+  // 思考等级不再显示为用户选项，所有模型固定使用最高档。
+  return 'xhigh'
 }
 
 const configuredApiKey = (): string | null => {

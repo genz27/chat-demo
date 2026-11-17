@@ -198,9 +198,14 @@ if (process.argv.includes('--check')) {
     await collect({ ...input, reasoning: { effort, summary: 'auto' } })
     assert.equal(calls.at(-1).body.reasoning.effort, effort)
   }
-  await collect({ ...input, model: 'deepseek-v4.1-flash', reasoning: undefined })
+  await collect({
+    ...input,
+    model: 'deepseek-v4.1-flash',
+    reasoning: { effort: 'xhigh', summary: 'auto' },
+  })
   assert.equal(new URL(calls.at(-1).url).pathname, '/v1/chat/completions')
   assert.equal(calls.at(-1).body.tools, undefined)
+  assert.deepEqual(calls.at(-1).body.reasoning, { effort: 'xhigh', summary: 'auto' })
   for (const test of ['final-only', 'done-only', 'citation', 'incomplete']) {
     fixture = test
     const result = await collect()
@@ -234,6 +239,6 @@ if (process.argv.includes('--check')) {
     await assert.rejects(() => collect())
   }
   console.log(
-    'PASS: default tools, Responses input/stream/store, auto and all four efforts, DeepSeek unchanged, SSE text/fallback/citations/length/error/truncation/tool-only handling'
+    'PASS: default tools, Responses input/stream/store, fixed xhigh reasoning for DeepSeek and Grok, SSE text/fallback/citations/length/error/truncation/tool-only handling'
   )
 }
