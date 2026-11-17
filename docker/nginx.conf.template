@@ -3,6 +3,8 @@ server {
   server_name _;
   root /usr/share/nginx/html;
   index index.html;
+  auth_basic "Hajimimi";
+  auth_basic_user_file /etc/nginx/.htpasswd;
 
   location /v1/ {
     proxy_pass https://haqimi.uk/v1/;

@@ -12,7 +12,7 @@ Install Node.js 22.12+ and pnpm, then run `pnpm install` and `pnpm dev`. Open ht
 
 ## Docker deployment
 
-Copy `.env.example` to `.env`, set `CHAT_API_KEY` (never commit `.env`), and start the proxy:
+Copy `.env.example` to `.env`, set `CHAT_API_KEY` and `ACCESS_PASSWORD` (never commit `.env`), and start the proxy:
 
 ```sh
 cp .env.example .env
@@ -20,6 +20,8 @@ docker compose up --build -d
 ```
 
 Open http://localhost:8080. Nginx proxies `/v1` to haqimi.uk and adds the server-side key.
+
+The website and all `/v1` endpoints require HTTP Basic authentication. The default username is `hajimimi` (override with `ACCESS_USERNAME`); `ACCESS_PASSWORD` is required and is converted to a bcrypt password file on startup. The container refuses to start without a password. Use HTTPS for public deployment to protect credentials in transit.
 
 ## Features
 

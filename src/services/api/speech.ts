@@ -1,10 +1,10 @@
-import { ApiError, API_ORIGIN, request } from './client.js'
+import { ApiError, API_ORIGIN, authHeaders, request } from './client.js'
 
 /**
  * 语音接口：
  * - ASR：POST /v1/tools/asr，multipart 上传 WAV / Ogg Opus，一次返回全文
  * - TTS：POST /v1/tools/tts，返回音频字节流（产出首帧后即返回 200）
- * 鉴权都用 Authorization: Bearer。
+ * 同源请求使用浏览器访问凭据，直连上游时使用 Bearer Key。
  */
 const TOOLS_BASE_URL = `${API_ORIGIN}/v1/tools`
 
@@ -23,7 +23,7 @@ export const transcribe = async (
   form.append('file', audio, 'recording.wav')
   const response = await request(`${TOOLS_BASE_URL}/asr`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: authHeaders(apiKey),
     body: form,
     signal,
   })
@@ -54,7 +54,7 @@ export const synthesize = async (
 ): Promise<ReadableStream<Uint8Array>> => {
   const response = await request(`${TOOLS_BASE_URL}/tts`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers: { ...authHeaders(apiKey), 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, voice_id: voice, format: 'pcm', filter_markdown: true }),
     signal,
   })

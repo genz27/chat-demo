@@ -70,8 +70,9 @@ export const request = async (url: string, init: RequestInit): Promise<Response>
   return response
 }
 
-const authHeaders = (apiKey: string): Record<string, string> =>
-  apiKey === '__CHAT_API_KEY__' ? {} : { Authorization: `Bearer ${apiKey}` }
+/** 同源代理使用浏览器的访问凭据；上游 API Key 由 Nginx 注入，不能覆盖 Basic Auth。 */
+export const authHeaders = (apiKey: string): Record<string, string> =>
+  API_ORIGIN === '' || apiKey === '__CHAT_API_KEY__' ? {} : { Authorization: `Bearer ${apiKey}` }
 
 /** 用 GET /v1/models 校验 API Key（不产生费用）。 */
 export const verifyApiKey = async (apiKey: string, signal?: AbortSignal): Promise<void> => {

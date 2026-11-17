@@ -23,11 +23,13 @@ pnpm dev
 
 ```sh
 cp .env.example .env
-# 编辑 .env，设置 CHAT_API_KEY=...
+# 编辑 .env，设置 CHAT_API_KEY=... 和 ACCESS_PASSWORD=...
 docker compose up --build -d
 ```
 
 打开 <http://localhost:8080>。密钥只存在容器环境和 Nginx 的请求头中，前端设置页不再显示数据管理/API Key 输入。
+
+网站与全部 `/v1` 接口都需要浏览器登录。默认账号为 `hajimimi`，密码由 `ACCESS_PASSWORD` 环境变量设置，容器启动时生成 bcrypt 密码文件。可以通过 `ACCESS_USERNAME` 更改账号。缺少密码时容器拒绝启动；不要将 `.env` 提交到 Git。公网使用应配置 HTTPS，以免 Basic Auth 凭据通过明文 HTTP 传输。
 
 ## 功能
 
