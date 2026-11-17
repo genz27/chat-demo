@@ -4,7 +4,7 @@
 
 哈吉咪咪是基于 haqimi.uk OpenAI-compatible API 的聊天应用。Docker/Nginx 在服务端注入 API Key，浏览器不再提供 API Key 输入框。
 
-当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型。Grok 提供自动、低、中、高、极高五档思考程度，并默认通过 `/v1/responses` 携带 `web_search` 和 `x_search` 工具，无需手动开启。自动档只发送 `reasoning.summary=auto`，其他档位另发 `reasoning.effort`。工具是否实际执行由上游决定。
+当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型。DeepSeek 请求会自动携带仓库内 `src/services/api/deepseekPrompt.ts` 的默认系统提示词。Grok 提供自动、低、中、高、极高五档思考程度，并默认通过 `/v1/responses` 携带 `web_search` 和 `x_search` 工具，无需手动开启。自动档只发送 `reasoning.summary=auto`，其他档位另发 `reasoning.effort`。工具是否实际执行由上游决定。
 
 ## 运行
 
@@ -53,6 +53,7 @@ docker compose up --build -d
 | `pnpm build`    | 构建到 `dist/`             |
 | `pnpm type`     | TypeScript 类型检查        |
 | `pnpm test:api` | API 请求及流式响应回归测试 |
+| `pnpm test:prompt` | DeepSeek 默认提示词完整性测试 |
 | `pnpm lint`     | oxlint 检查                |
 | `pnpm format`   | oxfmt 格式化               |
 

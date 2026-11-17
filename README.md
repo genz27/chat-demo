@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 哈吉咪咪 is a friendly chat application powered by the OpenAI-compatible API at haqimi.uk. Docker/Nginx injects the API key server-side, so the browser never asks users to enter a key.
 
-Only DeepSeek V4.1 Flash and Grok 4.7 are available. Grok exposes Auto, Low, Medium, High, and X-high reasoning effort and uses `/v1/responses` with `web_search` and `x_search` tools enabled by default. Auto sends only `reasoning.summary=auto`; explicit levels also send `reasoning.effort`. Actual tool execution depends on the upstream provider.
+Only DeepSeek V4.1 Flash and Grok 4.7 are available. DeepSeek requests include the bundled default system prompt in `src/services/api/deepseekPrompt.ts`. Grok exposes Auto, Low, Medium, High, and X-high reasoning effort and uses `/v1/responses` with `web_search` and `x_search` tools enabled by default. Auto sends only `reasoning.summary=auto`; explicit levels also send `reasoning.effort`. Actual tool execution depends on the upstream provider.
 
 ## Getting started
 
@@ -44,6 +44,7 @@ The deployment key comes from `CHAT_API_KEY`; it is not stored in the repository
 | `pnpm build`    | Build into `dist/`                        |
 | `pnpm type`     | Run TypeScript type checks                |
 | `pnpm test:api` | Test API requests and streaming responses |
+| `pnpm test:prompt` | Verify the bundled DeepSeek default prompt |
 | `pnpm lint`     | Lint with oxlint                          |
 | `pnpm format`   | Format with oxfmt                         |
 

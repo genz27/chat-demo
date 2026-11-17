@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createId } from '../../utils/id.js'
 import { ApiError, streamMessage } from '../api/client.js'
+import { systemPromptForModel } from '../api/deepseekPrompt.js'
 import type { ChatModel, CreateMessageRequest } from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
@@ -34,8 +35,6 @@ import {
 
 /** 默认模型；用户可在输入框左下角切换到 Grok。 */
 const MODEL: ChatModel = 'deepseek-v4.1-flash'
-/** 所有生成请求统一携带的助手身份说明 */
-const SYSTEM_PROMPT = 'You are a helpful assistant.'
 /** 保留最近打开的详情；当前会话、生成中及尚未成功保存的会话不淘汰。 */
 const SESSION_CACHE_LIMIT = 5
 /** 安全审核固定开启，所有请求都走扩展模式 */
@@ -994,13 +993,18 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           useSettings.getState().apiKey ?? '',
           {
             model: initial.model ?? MODEL,
-            system: SYSTEM_PROMPT,
+            system: systemPromptForModel(initial.model ?? MODEL),
             messages,
             thinking: { type: 'disabled' },
             safety_check: SAFETY_CHECK,
             tools: serverTools(),
             ...(initial.model === 'grok-4.7'
-              ? { reasoning: { effort: initial.reasoningEffort ?? 'auto', summary: 'auto' as const } }
+              ? {
+                  reasoning: {
+                    effort: initial.reasoningEffort ?? 'auto',
+                    summary: 'auto' as const,
+                  },
+                }
               : {}),
             ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
           },

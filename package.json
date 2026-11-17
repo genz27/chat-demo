@@ -10,6 +10,7 @@
     "build": "node scripts/build.mjs",
     "test:api": "node scripts/test-api.mjs --check",
     "test:auth": "node scripts/test-access-auth.mjs",
+    "test:prompt": "node scripts/test-deepseek-prompt.mjs",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
     "format": "oxfmt --write ."
