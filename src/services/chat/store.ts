@@ -45,7 +45,7 @@ const FILE_RETRY_LIMIT = 2
 /** 退避基数，第 n 次重试等待 2^n 倍；连续失败达到上限就放弃，把原始报错展示出来 */
 const FILE_RETRY_BASE_DELAY = 1000
 
-/** 本部署关闭深度思考与联网搜索，不向模型发送任何工具声明。 */
+/** 当前接口尚未返回 server-side 搜索结果，暂不发送会导致悬空 tool-call 的工具声明。 */
 const serverTools = (): CreateMessageRequest['tools'] => []
 
 /** 允许自动补标题的请求；手动重命名后取消本轮标题写入，包含主动清空标题的情况。 */
@@ -247,12 +247,13 @@ export const bindChatPersistence = () => {
 
 /** 按当前模型创建回复；深度思考与智能搜索固定关闭。 */
 const createReply = (): AssistantMessage => {
-  const { model } = useSettings.getState()
+  const { model, reasoningEffort } = useSettings.getState()
   return {
     id: createId(),
     role: 'assistant',
     createdAt: Date.now(),
     model,
+    reasoningEffort,
     thinking: false,
     search: false,
     prefix: true,
@@ -697,11 +698,12 @@ export const continueReply = (sessionId: string, messageId: string) => {
   ) {
     return
   }
-  const { model } = useSettings.getState()
+  const { model, reasoningEffort } = useSettings.getState()
   const reply: AssistantMessage = {
     ...previous,
     // 未记录请求配置的回复，续写时使用默认模型和当前开关。
     model: previous.model ?? model,
+    reasoningEffort,
     thinking: false,
     search: false,
     status: 'pending',
@@ -997,6 +999,9 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
             thinking: { type: 'disabled' },
             safety_check: SAFETY_CHECK,
             tools: serverTools(),
+            ...(initial.model === 'grok-4.7'
+              ? { reasoning: { effort: initial.reasoningEffort ?? 'auto', summary: 'auto' as const } }
+              : {}),
             ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
           },
           controller.signal

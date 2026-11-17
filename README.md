@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 哈吉咪咪 is a friendly chat application powered by the OpenAI-compatible API at haqimi.uk. Docker/Nginx injects the API key server-side, so the browser never asks users to enter a key.
 
-Only DeepSeek V4.1 Flash and Grok 4.7 are available. Deep thinking and smart search are disabled.
+Only DeepSeek V4.1 Flash and Grok 4.7 are available. Grok exposes Auto, Low, Medium, High, and X-high reasoning effort. The current haqimi.uk account accepted `web_search`/`x_search` fields but returned no server-side sources, so the UI does not claim that live search is enabled.
 
 ## Getting started
 

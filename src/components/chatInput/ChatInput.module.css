@@ -264,6 +264,12 @@
   font-size: 13px;
 }
 
+.reasoningSelect {
+  min-width: 100px;
+  height: 34px;
+  font-size: 13px;
+}
+
 .collapsedToggles .toggleLabel {
   display: none;
 }

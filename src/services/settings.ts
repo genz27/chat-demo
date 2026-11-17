@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
 import { normalizeLocation, type UserLocation } from './location.js'
-import type { ChatModel } from './api/types.js'
+import type { ChatModel, ReasoningEffort } from './api/types.js'
 
 export type Locale = 'zh-CN' | 'en-US'
 
@@ -12,6 +12,7 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 type Settings = {
   apiKey: string | null
   model: ChatModel
+  reasoningEffort: ReasoningEffort
   locale: Locale
   themePreference: ThemePreference
   location: UserLocation | null
@@ -22,6 +23,7 @@ type Settings = {
 const KEYS = {
   apiKey: 'chat-demo:api-key',
   model: 'chat-demo:model',
+  reasoningEffort: 'chat-demo:reasoning-effort',
   locale: 'chat-demo:locale',
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
@@ -91,6 +93,13 @@ const initialModel = (): ChatModel => {
   return saved === 'grok-4.7' ? 'grok-4.7' : 'deepseek-v4.1-flash'
 }
 
+const initialReasoningEffort = (): ReasoningEffort => {
+  const saved = read(KEYS.reasoningEffort)
+  return saved === 'low' || saved === 'medium' || saved === 'high' || saved === 'xhigh'
+    ? saved
+    : 'auto'
+}
+
 const configuredApiKey = (): string | null => {
   // __CHAT_API_KEY__ is deliberately retained as a runtime placeholder in Docker images.
   if (__APP_API_KEY__ && __APP_API_KEY__ !== '__CHAT_API_KEY__') {
@@ -102,6 +111,7 @@ const configuredApiKey = (): string | null => {
 export const useSettings = create<Settings>(() => ({
   apiKey: configuredApiKey(),
   model: initialModel(),
+  reasoningEffort: initialReasoningEffort(),
   locale: initialLocale(),
   location: initialLocation(),
   themePreference: initialThemePreference(),
@@ -112,6 +122,11 @@ export const useSettings = create<Settings>(() => ({
 export const setModel = (model: ChatModel) => {
   write(KEYS.model, model)
   useSettings.setState({ model })
+}
+
+export const setReasoningEffort = (reasoningEffort: ReasoningEffort) => {
+  write(KEYS.reasoningEffort, reasoningEffort)
+  useSettings.setState({ reasoningEffort })
 }
 
 export const setLocale = (locale: Locale) => {

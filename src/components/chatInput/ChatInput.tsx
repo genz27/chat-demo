@@ -5,8 +5,8 @@ import {
   IconSendOutline16,
   IconStopFill16,
 } from '../base/icons.js'
-import { setModel, useSettings } from '../../services/settings.js'
-import type { ChatModel } from '../../services/api/types.js'
+import { setModel, setReasoningEffort, useSettings } from '../../services/settings.js'
+import type { ChatModel, ReasoningEffort } from '../../services/api/types.js'
 import { useIsMobile } from '../../app/viewport.js'
 import { sendMessage, stopReply, useChatStore } from '../../services/chat/store.js'
 import {
@@ -49,6 +49,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     (state) => sessionId !== null && Object.hasOwn(state.streaming, sessionId)
   )
   const model = useSettings((state) => state.model)
+  const reasoningEffort = useSettings((state) => state.reasoningEffort)
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -190,6 +191,20 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               { value: 'grok-4.7', label: t('modelGrok') },
             ]}
             onChange={setModel}
+          />
+          <Select<ReasoningEffort>
+            ariaLabel={t('reasoningSelect')}
+            className={styles.reasoningSelect}
+            value={reasoningEffort}
+            disabled={model !== 'grok-4.7'}
+            options={[
+              { value: 'auto', label: t('reasoningAuto') },
+              { value: 'low', label: t('reasoningLow') },
+              { value: 'medium', label: t('reasoningMedium') },
+              { value: 'high', label: t('reasoningHigh') },
+              { value: 'xhigh', label: t('reasoningXHigh') },
+            ]}
+            onChange={setReasoningEffort}
           />
         </div>
         <div className={styles.right}>

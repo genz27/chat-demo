@@ -4,7 +4,7 @@
 
 哈吉咪咪是基于 haqimi.uk OpenAI-compatible API 的聊天应用。Docker/Nginx 在服务端注入 API Key，浏览器不再提供 API Key 输入框。
 
-当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型；深度思考和智能搜索已关闭。
+当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型。Grok 提供自动、低、中、高、极高五档思考程度；经 haqimi.uk 实测，当前账号的 `web_search`/`x_search` 不会返回实际搜索结果，因此暂不在界面宣称已启用联网搜索。
 
 ## 运行
 

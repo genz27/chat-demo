@@ -6,6 +6,7 @@
 
 /** haqimi.uk 当前公开的两个模型，界面只暴露这两个选项。 */
 export type ChatModel = 'deepseek-v4.1-flash' | 'grok-4.7'
+export type ReasoningEffort = 'auto' | 'low' | 'medium' | 'high' | 'xhigh'
 
 // ---------- 响应：内容块 ----------
 
@@ -180,6 +181,7 @@ export type CreateMessageRequest = {
   thinking: { type: 'enabled' | 'disabled' }
   tools: (DeepseekWebSearchTool | DeepseekReadUrlTool)[]
   safety_check: { level: 'high' }
+  reasoning?: { effort: ReasoningEffort; summary: 'auto' }
   title?: { enabled: boolean }
 }
 

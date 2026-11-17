@@ -144,7 +144,12 @@ export async function* streamMessage(
   const response = await request(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: { ...authHeaders(apiKey), 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({ model: body.model, messages: toOpenAiMessages(body), stream: true }),
+    body: JSON.stringify({
+      model: body.model,
+      messages: toOpenAiMessages(body),
+      stream: true,
+      ...(body.reasoning ? { reasoning: body.reasoning } : {}),
+    }),
     signal,
   })
   if (!response.body) {
