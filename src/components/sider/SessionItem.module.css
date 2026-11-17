@@ -22,9 +22,12 @@
     }
 
     &:hover,
+    &:focus-within,
     &.active {
       .action {
-        display: flex;
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
       }
     }
   }
@@ -40,9 +43,13 @@
 }
 
 .action {
-  display: none;
+  display: flex;
   flex-shrink: 0;
   margin-left: 4px;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
 }
 
 .renameInput {
@@ -61,7 +68,9 @@
 
 @media (hover: none) {
   .action {
-    display: flex;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
