@@ -7,6 +7,7 @@ import type {
   FileObject,
   FilePurpose,
   MessageStreamEvent,
+  TextCitation,
 } from './types.js'
 
 /** haqimi.uk 的 OpenAI-compatible API 地址。 */
@@ -135,15 +136,189 @@ type OpenAiChunk = {
   }>
 }
 
-/** POST /v1/chat/completions，并翻译为现有消息状态机使用的事件。 */
+type ResponseAnnotation = { type?: string; url?: string; title?: string }
+type ResponseOutput = {
+  type?: string
+  content?: { type?: string; text?: string; annotations?: ResponseAnnotation[] }[]
+}
+type ResponseState = {
+  status?: string
+  output?: ResponseOutput[]
+  error?: { message?: string } | null
+  incomplete_details?: { reason?: string } | null
+}
+type ResponseEvent = {
+  type?: string
+  delta?: string
+  text?: string
+  message?: string
+  output_index?: number
+  content_index?: number
+  annotation?: ResponseAnnotation
+  response?: ResponseState
+  error?: { message?: string }
+}
+
+/** Grok 默认声明 Web/X 搜索，使用 Responses SSE；不把推理摘要或工具过程当作回答。 */
+async function* streamGrokResponse(
+  apiKey: string,
+  body: CreateMessageRequest,
+  signal: AbortSignal
+): AsyncGenerator<MessageStreamEvent> {
+  const effort = body.reasoning?.effort
+  const response = await request(`${OPENAI_BASE_URL}/responses`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(apiKey),
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify({
+      model: body.model,
+      input: toOpenAiMessages(body),
+      stream: true,
+      store: false,
+      reasoning: { summary: 'auto', ...(effort && effort !== 'auto' ? { effort } : {}) },
+      tools: [{ type: 'web_search' }, { type: 'x_search' }],
+    }),
+    signal,
+  })
+  if (!response.body || !response.headers.get('Content-Type')?.includes('text/event-stream')) {
+    throw await readErrorResponse(response, 'protocol', 'Expected a Responses event stream.')
+  }
+
+  yield { type: 'message_start', message: { id: createId(), model: body.model } }
+  let started = false
+  let answer = ''
+  const parts = new Map<string, string>()
+  const citations = new Map<string, TextCitation>()
+  function* appendText(text: string): Generator<MessageStreamEvent> {
+    if (!text) {
+      return
+    }
+    if (!started) {
+      started = true
+      yield { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }
+    }
+    answer += text
+    yield { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } }
+  }
+  const addCitation = (annotation: ResponseAnnotation) => {
+    if (annotation.type !== 'url_citation' || !annotation.url?.match(/^https?:\/\//i)) {
+      return
+    }
+    citations.set(annotation.url, {
+      type: 'web_search_result_location',
+      url: annotation.url,
+      title: annotation.title ?? null,
+      cited_text: answer,
+      encrypted_index: '',
+    })
+  }
+
+  for await (const { event: eventName, data } of readServerSentEvents(response.body, signal)) {
+    signal.throwIfAborted()
+    let payload: unknown
+    try {
+      payload = JSON.parse(data)
+    } catch {
+      if (eventName === 'error') {
+        throw new ApiError('stream', data)
+      }
+      continue
+    }
+    if (isErrorBody(payload)) {
+      throw new ApiError('stream', payload.error.message)
+    }
+    if (typeof payload !== 'object' || payload === null) {
+      continue
+    }
+    const event = payload as ResponseEvent
+    const type = event.type ?? eventName
+    if (type === 'error' || type === 'response.failed') {
+      throw new ApiError(
+        'stream',
+        event.response?.error?.message ?? event.message ?? 'Grok request failed.'
+      )
+    }
+    const key = `${event.output_index ?? 0}:${event.content_index ?? 0}`
+    if (type === 'response.output_text.delta' && typeof event.delta === 'string') {
+      parts.set(key, (parts.get(key) ?? '') + event.delta)
+      yield* appendText(event.delta)
+    } else if (type === 'response.output_text.done' && typeof event.text === 'string') {
+      const previous = parts.get(key) ?? ''
+      if (event.text.startsWith(previous)) {
+        yield* appendText(event.text.slice(previous.length))
+      }
+      parts.set(key, event.text)
+    } else if (type === 'response.output_text.annotation.added' && event.annotation) {
+      addCitation(event.annotation)
+    } else if (type === 'response.completed' || type === 'response.incomplete') {
+      const state = event.response
+      if (state?.error || state?.status === 'failed' || state?.status === 'cancelled') {
+        throw new ApiError('stream', state.error?.message ?? 'Grok request failed.')
+      }
+      // Some providers only deliver the final output rather than text deltas.
+      for (const [outputIndex, item] of (state?.output ?? []).entries()) {
+        for (const [contentIndex, content] of (item.content ?? []).entries()) {
+          if (content.type !== 'output_text' || typeof content.text !== 'string') {
+            continue
+          }
+          const partKey = `${outputIndex}:${contentIndex}`
+          const previous = parts.get(partKey) ?? ''
+          if (content.text.startsWith(previous)) {
+            yield* appendText(content.text.slice(previous.length))
+          }
+          parts.set(partKey, content.text)
+          for (const annotation of content.annotations ?? []) {
+            addCitation(annotation)
+          }
+        }
+      }
+      if (!started) {
+        throw new ApiError('protocol', 'Grok returned no text response.')
+      }
+      for (const citation of citations.values()) {
+        yield {
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'citations_delta', citation },
+        }
+      }
+      yield { type: 'content_block_stop', index: 0 }
+      const incomplete = type === 'response.incomplete' || state?.status === 'incomplete'
+      if (incomplete && state?.incomplete_details?.reason !== 'max_output_tokens') {
+        throw new ApiError('interrupted', 'Grok response is incomplete.')
+      }
+      yield {
+        type: 'message_delta',
+        delta: { stop_reason: incomplete ? 'max_tokens' : 'end_turn', stop_sequence: null },
+      }
+      yield { type: 'message_stop' }
+      return
+    }
+  }
+  signal.throwIfAborted()
+  throw new ApiError('interrupted', '')
+}
+
+/** Grok 使用 Responses + 默认搜索工具；DeepSeek 继续使用 Chat Completions。 */
 export async function* streamMessage(
   apiKey: string,
   body: CreateMessageRequest,
   signal: AbortSignal
 ): AsyncGenerator<MessageStreamEvent> {
+  if (body.model === 'grok-4.7') {
+    yield* streamGrokResponse(apiKey, body, signal)
+    return
+  }
   const response = await request(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
-    headers: { ...authHeaders(apiKey), 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    headers: {
+      ...authHeaders(apiKey),
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
     body: JSON.stringify({
       model: body.model,
       messages: toOpenAiMessages(body),

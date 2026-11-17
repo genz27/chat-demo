@@ -4,7 +4,7 @@
 
 哈吉咪咪是基于 haqimi.uk OpenAI-compatible API 的聊天应用。Docker/Nginx 在服务端注入 API Key，浏览器不再提供 API Key 输入框。
 
-当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型。Grok 提供自动、低、中、高、极高五档思考程度；经 haqimi.uk 实测，当前账号的 `web_search`/`x_search` 不会返回实际搜索结果，因此暂不在界面宣称已启用联网搜索。
+当前仅开放 DeepSeek V4.1 Flash 与 Grok 4.7 两个模型。Grok 提供自动、低、中、高、极高五档思考程度，并默认通过 `/v1/responses` 携带 `web_search` 和 `x_search` 工具，无需手动开启。自动档只发送 `reasoning.summary=auto`，其他档位另发 `reasoning.effort`。工具是否实际执行由上游决定。
 
 ## 运行
 
@@ -41,17 +41,18 @@ docker compose up --build -d
 
 部署密钥由 `CHAT_API_KEY` 环境变量提供，不写入仓库；会话及附件原件保存在 IndexedDB，本地数据按浏览器用户配置和站点源隔离。设置页仅保留主题、语言、朗读音色和位置偏好。
 
-[rspack.config.ts](rspack.config.ts) 默认连接 `https://haqimi.uk`；Docker 使用同源 `/v1` 代理。聊天通过 `/v1/chat/completions` 通信，默认模型为 `deepseek-v4.1-flash`，可切换 `grok-4.7`；语音使用 `/v1/tools/asr` 与 `/v1/tools/tts`。
+[rspack.config.ts](rspack.config.ts) 默认连接 `https://haqimi.uk`；Docker 使用同源 `/v1` 代理。DeepSeek 使用 `/v1/chat/completions`，Grok 使用 `/v1/responses` 并默认携带 Web/X 搜索工具；语音使用 `/v1/tools/asr` 与 `/v1/tools/tts`。
 
 ## 开发
 
-| 命令          | 用途                |
-| ------------- | ------------------- |
-| `pnpm dev`    | 启动开发服务器      |
-| `pnpm build`  | 构建到 `dist/`      |
-| `pnpm type`   | TypeScript 类型检查 |
-| `pnpm lint`   | oxlint 检查         |
-| `pnpm format` | oxfmt 格式化        |
+| 命令            | 用途                       |
+| --------------- | -------------------------- |
+| `pnpm dev`      | 启动开发服务器             |
+| `pnpm build`    | 构建到 `dist/`             |
+| `pnpm type`     | TypeScript 类型检查        |
+| `pnpm test:api` | API 请求及流式响应回归测试 |
+| `pnpm lint`     | oxlint 检查                |
+| `pnpm format`   | oxfmt 格式化               |
 
 ## 许可证
 

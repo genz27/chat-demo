@@ -45,7 +45,7 @@ const FILE_RETRY_LIMIT = 2
 /** 退避基数，第 n 次重试等待 2^n 倍；连续失败达到上限就放弃，把原始报错展示出来 */
 const FILE_RETRY_BASE_DELAY = 1000
 
-/** 当前接口尚未返回 server-side 搜索结果，暂不发送会导致悬空 tool-call 的工具声明。 */
+/** 旧 Messages 协议工具留空；Grok 的 Web/X 工具在 API 客户端默认声明。 */
 const serverTools = (): CreateMessageRequest['tools'] => []
 
 /** 允许自动补标题的请求；手动重命名后取消本轮标题写入，包含主动清空标题的情况。 */
@@ -245,7 +245,7 @@ export const bindChatPersistence = () => {
   }
 }
 
-/** 按当前模型创建回复；深度思考与智能搜索固定关闭。 */
+/** 保存当前模型及思考档位；Grok 的默认搜索工具由 API 客户端声明。 */
 const createReply = (): AssistantMessage => {
   const { model, reasoningEffort } = useSettings.getState()
   return {

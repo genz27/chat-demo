@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 哈吉咪咪 is a friendly chat application powered by the OpenAI-compatible API at haqimi.uk. Docker/Nginx injects the API key server-side, so the browser never asks users to enter a key.
 
-Only DeepSeek V4.1 Flash and Grok 4.7 are available. Grok exposes Auto, Low, Medium, High, and X-high reasoning effort. The current haqimi.uk account accepted `web_search`/`x_search` fields but returned no server-side sources, so the UI does not claim that live search is enabled.
+Only DeepSeek V4.1 Flash and Grok 4.7 are available. Grok exposes Auto, Low, Medium, High, and X-high reasoning effort and uses `/v1/responses` with `web_search` and `x_search` tools enabled by default. Auto sends only `reasoning.summary=auto`; explicit levels also send `reasoning.effort`. Actual tool execution depends on the upstream provider.
 
 ## Getting started
 
@@ -32,17 +32,18 @@ Open http://localhost:8080. Nginx proxies `/v1` to haqimi.uk and adds the server
 
 The deployment key comes from `CHAT_API_KEY`; it is not stored in the repository. Conversations and attachments are stored in IndexedDB. Settings only contains theme, language, voice, and location preferences.
 
-[rspack.config.ts](rspack.config.ts) defaults to `https://haqimi.uk`; Docker uses a same-origin `/v1` proxy. Chat uses `/v1/chat/completions` with `deepseek-v4.1-flash` or `grok-4.7`; speech uses `/v1/tools/asr` and `/v1/tools/tts`.
+[rspack.config.ts](rspack.config.ts) defaults to `https://haqimi.uk`; Docker uses a same-origin `/v1` proxy. DeepSeek uses `/v1/chat/completions`; Grok uses `/v1/responses` with default Web/X search tools. Speech uses `/v1/tools/asr` and `/v1/tools/tts`.
 
 ## Development
 
-| Command       | Description                  |
-| ------------- | ---------------------------- |
-| `pnpm dev`    | Start the development server |
-| `pnpm build`  | Build into `dist/`           |
-| `pnpm type`   | Run TypeScript type checks   |
-| `pnpm lint`   | Lint with oxlint             |
-| `pnpm format` | Format with oxfmt            |
+| Command         | Description                               |
+| --------------- | ----------------------------------------- |
+| `pnpm dev`      | Start the development server              |
+| `pnpm build`    | Build into `dist/`                        |
+| `pnpm type`     | Run TypeScript type checks                |
+| `pnpm test:api` | Test API requests and streaming responses |
+| `pnpm lint`     | Lint with oxlint                          |
+| `pnpm format`   | Format with oxfmt                         |
 
 ## License
 
